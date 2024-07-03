@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    <title>My first three.js app</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      canvas#c {
+        position: fixed;
+        z-index: -1;
+        top: 0;
+        left: 0;
+        width: 100%;
+        display: block;
+      }
+      button {
+        position: fixed;
+        z-index: 2;
+        margin: 2rem;
+        padding: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="change-orbit">Changer l'orbite</button>
+    <canvas id="c" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from "three";
+
+      let scene;
+      let renderer;
+      let camera;
+      let sphere;
+
+      let refIsSphereOrbiting = true;
+      const refTimeLagSphereOrbiting = { pauseTime: 0, lag: 0 };
+
+      const changeOrbit = () => {
+        refIsSphereOrbiting = !refIsSphereOrbiting;
+      };
+      const button = document.querySelector("#change-orbit");
+      button.addEventListener("click", changeOrbit);
+
+      const render = (time) => {
+        time *= 0.001;
+
+        sphere.rotation.y = time * 1.7;
+
+        if (refIsSphereOrbiting) {
+          const timeWithLag = time - refTimeLagSphereOrbiting.lag;
+          sphere.position.x = Math.cos(timeWithLag * 0.7) * 2.6;
+          sphere.position.y = Math.cos(timeWithLag * 0.7) * 0.3;
+          sphere.position.z = -5 + Math.sin(timeWithLag * 0.7) * 2.6;
+          refTimeLagSphereOrbiting.pauseTime = timeWithLag;
+        } else {
+          refTimeLagSphereOrbiting.lag =
+            time - refTimeLagSphereOrbiting.pauseTime;
+        }
+
+        renderer.render(scene, camera);
+
+        requestAnimationFrame(render);
+      };
+
+      (async function () {
+        const canvas = document.querySelector("#c");
+        renderer = new THREE.WebGLRenderer({ canvas });
+
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+
+        camera = new THREE.PerspectiveCamera(75, 2, 1, 10); // fov, apspect, near, far
+        camera.position.z = 0;
+
+        scene = new THREE.Scene();
+
+        const pointLight = new THREE.PointLight(0xffffff, 30, 100, 1);
+        pointLight.position.set(5, 5, 10);
+        scene.add(pointLight);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        scene.add(ambientLight);
+
+        const textureloader = new THREE.TextureLoader();
+        const sphereMaterial = new THREE.MeshStandardMaterial({
+          map: await new Promise((resolve, reject) => {
+            textureloader.load(
+              "https://static.thomasdeveloper-react.com/assets/images/earth.jpg",
+              (texture) => {
+                resolve(texture);
+              },
+              undefined,
+              (err) => {
+                reject(err);
+              }
+            );
+          }),
+        });
+
+        const sphereGeometry = new THREE.SphereGeometry(1, 80, 80);
+        sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.position.set(0, 0, -5);
+
+        const earthInclinaison = -0.409043; // Earth inclinaison 1st of January 23.4364305466°
+
+        sphere.rotation.set(0, 0, earthInclinaison);
+        scene.add(sphere);
+
+        requestAnimationFrame(render);
+      })();
+    </script>
+  </body>
+</html>
